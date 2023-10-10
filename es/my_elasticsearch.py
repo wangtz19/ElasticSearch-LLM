@@ -4,7 +4,7 @@ class MyElasticsearch(Elasticsearch):
     def __init__(self, url, index_name="linewell-policy", fields=None) -> None:
         self.index_name = index_name
         self.client = Elasticsearch(url)
-        self.fields = ["标题", "内容"] if fields is None else fields
+        self.fields = ["标题", "子标题", "内容"] if fields is None else fields
     def search(self, query, top_k=0) -> list:
         query_body = {
             "query": {

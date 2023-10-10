@@ -1,4 +1,5 @@
 import os
+from text_splitter import split_by_heading
 from tqdm import tqdm
 
 def unicode2str(filename):
@@ -10,18 +11,28 @@ def unicode2str(filename):
         s += cp[5:] # for trailing numbers not starting with #U
     return s
 
-def load_data(filenames):
+def load_data(filenames, split=True):
     doc_list = []
     for filename in tqdm(filenames):
         with open(filename, "r") as f:
-            data = f.read()
             title = unicode2str(os.path.basename(filename))
-            doc_list.append({
-                "标题": title,
-                "内容": data
-            })
+            if not split:
+                data = f.read()
+                doc_list.append({
+                    "标题": title,
+                    "子标题": "",
+                    "内容": data
+                })
+            else:
+                data = split_by_heading(filename)
+                for key, val in data.items():
+                    doc_list.append({
+                        "标题": title,
+                        "子标题": key,
+                        "内容": val
+                    })
     return doc_list
 
-def load_data_from_dir(dir):
+def load_data_from_dir(dir, split=True):
     filenames = [os.path.join(dir, filename) for filename in os.listdir(dir)]
-    return load_data(filenames)
+    return load_data(filenames, split=split)

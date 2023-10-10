@@ -50,7 +50,7 @@ if __name__ == "__main__":
     create_index(index_name, es)
 
     # insert data
-    doc_list = load_data_from_dir("/root/es-text2vec-llm-qa/data/cleaned_data_all")
+    doc_list = load_data_from_dir("/root/es-llm/data/cleaned_data_all")
     for doc in tqdm(doc_list):
-        es.index(index=index_name, body=doc)
+        es.index(index=index_name, document=doc)
     print("Data inserted successfully.")
