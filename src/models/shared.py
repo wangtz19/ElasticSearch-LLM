@@ -1,6 +1,6 @@
 import sys
 from typing import Any
-from models.loader import LoaderCheckPoint
+from src.models.loader import LoaderCheckPoint
 
 loaderCheckPoint: LoaderCheckPoint = None
 # 此处请写绝对路径
@@ -23,6 +23,6 @@ def loaderLLM() -> Any:
 
     loaderCheckPoint.reload_model()
 
-    provides_class = getattr(sys.modules['models'], llm_model_info['provides'])
+    provides_class = getattr(sys.modules['src.models'], llm_model_info['provides'])
     modelInsLLM = provides_class(checkPoint=loaderCheckPoint)
     return modelInsLLM

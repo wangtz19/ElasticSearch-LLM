@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from models.loader import LoaderCheckPoint
+from src.models.loader import LoaderCheckPoint
 
 
 class AnswerResult:

@@ -9,7 +9,7 @@ class MyElasticsearch(Elasticsearch):
         query_body = {
             "query": {
                 "multi_match": {
-                    "analyzer": "ik_smart",  # 使用ik分词器进行分词处理
+                    "analyzer": "ik_smart",
                     "query": query,
                     "fields": self.fields
                 }
@@ -19,8 +19,10 @@ class MyElasticsearch(Elasticsearch):
         res = []
         for hit in response["hits"]["hits"]:
             score = hit["_score"]
-            doc_data = "\n".join([hit["_source"][field] for field in self.fields])
-            res.append((score, doc_data))
+            texts = "\n".join([hit["_source"][field] for field in self.fields])
+            sources = hit['_source']['标题'] + "\n\t" + hit['_source']['子标题'] + \
+                        hit['_source']['内容']
+            res.append((score, texts, sources))
         if top_k == 0:
             return res
         else:

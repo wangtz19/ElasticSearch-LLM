@@ -1,9 +1,9 @@
 from text2vec import SentenceModel, semantic_search
 import gradio as gr
-from es import MyElasticsearch
-import models.shared as shared
-from models.loader import LoaderCheckPoint
-from models.base import BaseAnswer
+from src.es import MyElasticsearch
+import src.models.shared as shared
+from src.models.loader import LoaderCheckPoint
+from src.models.base import BaseAnswer
 
 model = SentenceModel()
 es = MyElasticsearch("http://127.0.0.1:9200")
@@ -40,10 +40,11 @@ def chat(
     hits = semantic_search(query_embedding, answer_embeddings, top_k=vec_top_k)
     print(hits)
     print(ans)
+    
     res = ""
     hits = hits[0]
     for hit in hits:
-        res += ans[hit['corpus_id']] + ","
+        res += ans[hit['corpus_id']] + "\n"
 
     for resp, history in get_answer(query=query, context=res, chat_history=[], streaming=False):
         yield resp, res

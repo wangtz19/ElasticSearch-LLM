@@ -43,15 +43,15 @@ class LoaderCheckPoint:
         self.model = None
         self.tokenizer = None
         self.params = params or {}
-        self.model_name = "chatglm2-6b"
-        self.model_path = None
-        self.no_remote_model = False
-        self.lora = ''
-        self.use_ptuning_v2 = False
-        self.lora_dir = ''
-        self.ptuning_dir = 'ptuning-v2'
-        self.load_in_8bit = False
-        self.bf16 = False
+        self.model_name = params.get('model_name', False)
+        self.model_path = params.get('model_path', None)
+        self.no_remote_model = params.get('no_remote_model', False)
+        self.lora = params.get('lora', '')
+        self.use_ptuning_v2 = params.get('use_ptuning_v2', False)
+        self.lora_dir = params.get('lora_dir', '')
+        self.ptuning_dir = params.get('ptuning_dir', 'ptuning-v2')
+        self.load_in_8bit = params.get('load_in_8bit', False)
+        self.bf16 = params.get('bf16', False)
 
     def _load_model_config(self, model_name):
 

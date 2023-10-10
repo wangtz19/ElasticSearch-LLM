@@ -1,8 +1,8 @@
 from abc import ABC
 from langchain.llms.base import LLM
 from typing import Optional, List
-from models.loader import LoaderCheckPoint
-from models.base import (BaseAnswer, AnswerResult)
+from src.models.loader import LoaderCheckPoint
+from src.models.base import (BaseAnswer, AnswerResult)
 
 
 class ChatGLM2(BaseAnswer, LLM, ABC):
