@@ -20,8 +20,10 @@ class MyElasticsearch(Elasticsearch):
         for hit in response["hits"]["hits"]:
             score = hit["_score"]
             texts = "\n".join([hit["_source"][field] for field in self.fields])
-            sources = hit['_source']['标题'] + "\n\t" + hit['_source']['子标题'] + \
-                        hit['_source']['内容']
+            sources = {
+                "title": hit['_source']['标题'],
+                "content": hit['_source']['子标题'] + hit['_source']['内容'],
+            }
             res.append((score, texts, sources))
         if top_k == 0:
             return res

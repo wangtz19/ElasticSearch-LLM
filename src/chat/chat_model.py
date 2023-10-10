@@ -81,7 +81,8 @@ class ChatModel:
         else:
             context = "\n".join(all_texts)
             source_documents = [{
-                "source": ins[2],
+                "title": ins[2]["title"],
+                "content": ins[2]["content"],
                 "score": ins[0]
             } for ins in instructions]
         print(f"source_documents: {source_documents}")
@@ -91,10 +92,19 @@ class ChatModel:
     def stream_chat(
             self,
             query,
+            history,
             es_top_k,
             vec_top_k,
     ):
         self.es_top_k = es_top_k
         self.vec_top_k = vec_top_k
-        for resp, history, source_documents in self.chat(query, streaming=True):
-            yield resp, source_documents
+        for resp, history, source_documents in self.chat(
+            query, streaming=True, history=history):
+            source = "\n\n" + "".join(
+                [f"""<details> <summary>【相关度】{doc["score"]} -【出处{i + 1}】 {doc["title"]}</summary>\n"""
+                f"""{doc["content"]}\n"""
+                f"""</details>"""
+                for i, doc in
+                enumerate(source_documents)])
+            history[-1][-1] += source
+            yield history, ""
