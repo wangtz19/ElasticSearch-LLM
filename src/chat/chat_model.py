@@ -58,7 +58,7 @@ class ChatModel:
     def chat(
             self, 
             query,
-            streaming=True,
+            streaming=False,
             history=[]
         ):
         start = time.time()
@@ -87,3 +87,14 @@ class ChatModel:
         print(f"source_documents: {source_documents}")
         for resp, history in self.get_answer(query=query, context=context, chat_history=history, streaming=streaming):
             yield resp, history, source_documents
+
+    def stream_chat(
+            self,
+            query,
+            es_top_k,
+            vec_top_k,
+    ):
+        self.es_top_k = es_top_k
+        self.vec_top_k = vec_top_k
+        for resp, history, source_documents in self.chat(query, streaming=True):
+            yield resp, source_documents
