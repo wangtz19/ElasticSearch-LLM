@@ -85,7 +85,7 @@ async def local_doc_chat(
     ):
         pass
     source_documents = [
-        f"""出处 [{inum + 1}] {doc['source']}\n"""
+        f"""出处 [{inum + 1}] {doc['title']}\n\t{doc['content']}\n"""
         f"""相关度：{doc['score']}\n\n"""
         for inum, doc in enumerate(sources)
     ]

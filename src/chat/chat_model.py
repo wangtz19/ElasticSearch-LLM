@@ -14,8 +14,8 @@ PROMPT_TEMPLATE = """已知信息：
 class ChatModel:
     def __init__(
             self, 
-            es_top_k=5, 
-            vec_top_k=3,
+            es_top_k=3, 
+            vec_top_k=2,
             use_vec=False,
             histrory_len=3,
             vec_model_path="/root/share/text2vec-large-chinese",
@@ -75,7 +75,8 @@ class ChatModel:
             hits = hits[0]
             context = "\n".join([all_texts[hit['corpus_id']] for hit in hits])
             source_documents = [{
-                "source": instructions[hit['corpus_id']][2],
+                "title": instructions[hit['corpus_id']][2]["title"],
+                "content": instructions[hit['corpus_id']][2]["content"],
                 "score": hit['score']
             } for hit in hits]
         else:
