@@ -11,6 +11,12 @@ PROMPT_TEMPLATE = """已知信息：
 
 根据上述已知信息，简洁和专业的来回答用户的问题。如果无法从中得到答案，请说 “根据已知信息无法回答该问题” 或 “没有提供足够的相关信息”，不允许在答案中添加编造成分，答案请使用中文。 问题是：{question}"""
 
+PROMPT_TEMPLATE_WITH_HISTORY = """已知信息：
+{context} 
+历史问题：
+{history}
+根据上述已知信息和历史问题，详细和专业的来回答用户的本次问题。如果无法从已知信息中得到答案，请说 “无法回答该问题” 或 “没有提供足够的相关信息”，不允许在答案中添加编造成分，答案请使用中文。 本次问题如下：{question}"""
+
 class ChatModel:
     def __init__(
             self, 
@@ -27,6 +33,7 @@ class ChatModel:
         self.es_top_k = es_top_k
         self.vec_top_k = vec_top_k
         self.use_vec = use_vec
+        self.history_len = histrory_len
     
         shared.loaderCheckPoint = LoaderCheckPoint(params=llm_params)
         llm_model_ins = shared.loaderLLM()
@@ -48,7 +55,13 @@ class ChatModel:
             chat_history=[], 
             streaming: bool = False
         ):
-        prompt = PROMPT_TEMPLATE.format(question=query, context=context)
+        query_history = [h[0] for h in chat_history if h[0] is not None]
+        if len(query_history) > 0:
+            prompt = PROMPT_TEMPLATE_WITH_HISTORY.format(question=query, context=context, history="\n".join([f"{i + 1}. {h[0]}" 
+                                                for i, h in enumerate(query_history[-self.history_len:])]))
+        else:
+            prompt = PROMPT_TEMPLATE.format(question=query, context=context)
+        print(prompt)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history, streaming=streaming):  
             resp = answer_result.llm_output["answer"]
             history = answer_result.history
@@ -59,7 +72,7 @@ class ChatModel:
             self, 
             query,
             streaming=False,
-            history=[]
+            chat_history=[]
         ):
         start = time.time()
         instructions = self.es.search(query, self.es_top_k)     #[(score, text, source)]
@@ -87,20 +100,20 @@ class ChatModel:
                 "score": ins[0]
             } for ins in instructions]
         print(f"source_documents: {source_documents}")
-        for resp, history in self.get_answer(query=query, context=context, chat_history=history, streaming=streaming):
+        for resp, history in self.get_answer(query=query, context=context, chat_history=chat_history, streaming=streaming):
             yield resp, history, source_documents
 
     def stream_chat(
             self,
             query,
-            history,
+            chat_history,
             es_top_k,
             vec_top_k,
     ):
         self.es_top_k = es_top_k
         self.vec_top_k = vec_top_k
         for resp, history, source_documents in self.chat(
-            query, streaming=True, history=history):
+            query, streaming=True, chat_history=chat_history):
             source = "\n\n" + "".join(
                 [f"""<details> <summary>【相关度】{doc["score"]} -【出处{i + 1}】 {doc["title"]}</summary>\n"""
                 f"""{doc["content"]}\n"""
