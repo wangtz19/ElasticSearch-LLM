@@ -15,7 +15,10 @@ def load_data(filenames, split=True):
     doc_list = []
     for filename in tqdm(filenames):
         with open(filename, "r") as f:
-            title = unicode2str(os.path.basename(filename))
+            if len(filename.split("#")) > 2:
+                title = unicode2str(os.path.basename(filename))
+            else:
+                title = os.path.basename(filename)[:-len(".txt")]
             if not split:
                 data = f.read()
                 doc_list.append({

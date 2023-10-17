@@ -81,7 +81,7 @@ async def local_doc_chat(
     ),
 ):
     for resp, history, sources in chat_model.chat(
-        query=question, streaming=False, history=history
+        query=question, streaming=False, chat_history=history
     ):
         pass
     source_documents = [
