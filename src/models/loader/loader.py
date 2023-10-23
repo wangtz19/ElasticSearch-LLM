@@ -104,15 +104,15 @@ class LoaderCheckPoint:
                 num_gpus = torch.cuda.device_count()
                 if num_gpus < 2 and self.device_map is None:
                     print("Loading model on single GPU...")
-                    model = (
-                        LoaderClass.from_pretrained(checkpoint,
+                    model = LoaderClass.from_pretrained(checkpoint,
                                                     config=self.model_config,
                                                     device_map="auto",
                                                     torch_dtype=torch.bfloat16 if self.bf16 else torch.float16,
                                                     trust_remote_code=True)
-                        .half()
-                        .cuda()
-                    )
+                    if "qwen" in model_name.lower():
+                        model = model.bfloat16().cuda()
+                    else:
+                        model = model.half().cuda()
                     print(f"Loaded the model in {(time.time() - t0):.2f} seconds.")
                 else:
                     from accelerate import dispatch_model, infer_auto_device_map
@@ -121,7 +121,11 @@ class LoaderCheckPoint:
                                                         config=self.model_config,
                                                         device_map="auto",
                                                         torch_dtype=torch.bfloat16 if self.bf16 else torch.float16,
-                                                        trust_remote_code=True).half()
+                                                        trust_remote_code=True)
+                    if "qwen" in model_name.lower():
+                        model = model.bfloat16()
+                    else:
+                        model = model.half()
                     print(f"Loaded the model in {(time.time() - t0):.2f} seconds.")
                     # 可传入device_map自定义每张卡的部署情况
                     if self.device_map is None:
