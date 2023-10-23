@@ -11,7 +11,21 @@ llm_model_dict = {
         "local_model_path": "/root/share/chatglm2-6b",
         "provides": "ChatGLM2"
     },
+    "baichuan2-13b-chat": {
+        "name": "baichuan2-13b-chat",
+        "pretrained_model_name": "baichuan-inc/Baichuan2-13B-Chat",
+        "local_model_path": "/root/share/Baichuan2-13B-Chat",
+        "provides": "Baichuan2"
+    },
+    "qwen-14b-chat": {
+        "name": "qwen-14b-chat",
+        "pretrained_model_name": "Qwen/Qwen-14B-Chat",
+        "local_model_path": "/root/share/Qwen-14B-Chat",
+        "provides": "Qwen"
+    },
 }
+
+
 LLM_MODEL = "chatglm2-6b"
 def loaderLLM() -> Any:
     pre_model_name = loaderCheckPoint.model_name

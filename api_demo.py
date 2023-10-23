@@ -118,11 +118,12 @@ def api_start(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", type=str, default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=7861)
-    parser.add_argument("--filepath", type=str, default="data/cleaned_data",
+    parser.add_argument("--host", "-ho", type=str, default="0.0.0.0")
+    parser.add_argument("--port", "-p", type=int, default=7861)
+    parser.add_argument("--filepath", "-f", type=str, default="data/cleaned_data",
                         help="path to the local knowledge file")
-    parser.add_argument("--model_name", type=str, default="chatglm2-6b")
+    parser.add_argument("--model_name", "-m", type=str, default="chatglm2-6b",
+                        help="model name, e.g. chatglm2-6b, baichuan2-13b-chat, qwen-14b-chat")
     args = parser.parse_args()
 
     args_dict = vars(args)

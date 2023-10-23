@@ -99,26 +99,30 @@ class LoaderCheckPoint:
         # 那还是因为显存不够，此时只能考虑--load-in-8bit,或者配置默认模型为`chatglm-6b-int8`
         if not any([self.llm_device.lower() == "cpu",
                     self.load_in_8bit, self.is_llamacpp]):
-
             if torch.cuda.is_available() and self.llm_device.lower().startswith("cuda"):
                 # 根据当前设备GPU数量决定是否进行多卡部署
                 num_gpus = torch.cuda.device_count()
                 if num_gpus < 2 and self.device_map is None:
+                    print("Loading model on single GPU...")
                     model = (
                         LoaderClass.from_pretrained(checkpoint,
                                                     config=self.model_config,
+                                                    device_map="auto",
                                                     torch_dtype=torch.bfloat16 if self.bf16 else torch.float16,
                                                     trust_remote_code=True)
                         .half()
                         .cuda()
                     )
+                    print(f"Loaded the model in {(time.time() - t0):.2f} seconds.")
                 else:
-                    from accelerate import dispatch_model
-
+                    from accelerate import dispatch_model, infer_auto_device_map
+                    print(f"Loading model on {num_gpus} GPUs...")
                     model = LoaderClass.from_pretrained(checkpoint,
                                                         config=self.model_config,
+                                                        device_map="auto",
                                                         torch_dtype=torch.bfloat16 if self.bf16 else torch.float16,
                                                         trust_remote_code=True).half()
+                    print(f"Loaded the model in {(time.time() - t0):.2f} seconds.")
                     # 可传入device_map自定义每张卡的部署情况
                     if self.device_map is None:
                         if 'chatglm' in model_name.lower():
@@ -126,18 +130,31 @@ class LoaderCheckPoint:
                         elif 'moss' in model_name.lower():
                             self.device_map = self.moss_auto_configure_device_map(num_gpus, model_name)
                         else:
-                            self.device_map = self.chatglm_auto_configure_device_map(num_gpus)
+                            from accelerate.utils import get_balanced_memory
+                            max_memory = get_balanced_memory(model,
+                                                             dtype=torch.int8 if self.load_in_8bit else None,
+                                                             low_zero=False,
+                                                             no_split_module_classes=model._no_split_modules)
+                            self.device_map = infer_auto_device_map(model,
+                                                                    dtype=torch.float16 if not self.load_in_8bit else torch.int8,
+                                                                    max_memory=max_memory,
+                                                                    no_split_module_classes=model._no_split_modules)
 
+                    print(f"device_map: {self.device_map}")
                     model = dispatch_model(model, device_map=self.device_map)
+                    print(f"Dispatch the model in {(time.time() - t0):.2f} seconds.")
             else:
+                print(f"Loading model on CPU...")
                 model = (
                     LoaderClass.from_pretrained(
                         checkpoint,
                         config=self.model_config,
+                        device_map="auto",
                         trust_remote_code=True)
                     .float()
                     .to(self.llm_device)
                 )
+                print(f"Loaded the model in {(time.time() - t0):.2f} seconds.")
 
         elif self.is_llamacpp:
 

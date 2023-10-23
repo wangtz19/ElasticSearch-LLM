@@ -3,23 +3,31 @@ from langchain.llms.base import LLM
 from typing import Optional, List
 from src.models.loader import LoaderCheckPoint
 from src.models.base import (BaseAnswer, AnswerResult)
+from transformers.generation import GenerationConfig
 
 
-class ChatGLM2(BaseAnswer, LLM, ABC):
-    max_token: int = 10000
-    temperature: float = 0.01
-    top_p = 0.9
+class Qwen(BaseAnswer, LLM, ABC):
     checkPoint: LoaderCheckPoint = None
-    # history = []
-    history_len: int = 10
-
+    history_len: int = 5
     def __init__(self, checkPoint: LoaderCheckPoint = None):
         super().__init__()
         self.checkPoint = checkPoint
+        self.checkPoint.model.generation_config = GenerationConfig(
+            max_new_tokens=4096,
+            temperature=0.3,
+            top_k=0,
+            top_p=0.8,
+            repetition_penalty=1.1,
+            do_sample=True,
+            chat_format="chatml",
+            eos_token_id=151643,
+            pad_token_id=151643,
+            max_window_size=6144,
+        )
 
     @property
     def _llm_type(self) -> str:
-        return "ChatGLM2"
+        return "Qwen"
 
     @property
     def _check_point(self) -> LoaderCheckPoint:
@@ -34,16 +42,14 @@ class ChatGLM2(BaseAnswer, LLM, ABC):
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
         print(f"__call:{prompt}")
-        response, _ = self.checkPoint.model.chat(
+        resp, _ = self.checkPoint.model.chat(
             self.checkPoint.tokenizer,
             prompt,
             history=[],
-            max_length=self.max_token,
-            temperature=self.temperature
         )
-        print(f"response:{response}")
+        print(f"response:{resp}")
         print(f"+++++++++++++++++++++++++++++++++++")
-        return response
+        return resp
 
     def generatorAnswer(self, prompt: str,
                          history: List[List[str]] = [],
@@ -51,32 +57,31 @@ class ChatGLM2(BaseAnswer, LLM, ABC):
 
         if streaming:
             history += [[]]
-            for inum, (stream_resp, _) in enumerate(self.checkPoint.model.stream_chat(
+            position = 0
+            for resp in self.checkPoint.model.chat_stream(
                     self.checkPoint.tokenizer,
                     prompt,
                     history=history[-self.history_len:] if self.history_len > 1 else [],
-                    max_length=self.max_token,
-                    temperature=self.temperature
-            )):
-                # self.checkPoint.clear_torch_cache()
-                history[-1] = [prompt, stream_resp]
+            ):
+                print(resp[position:], end="", flush=True)
+                history[-1] = [prompt, resp]
                 answer_result = AnswerResult()
                 answer_result.history = history
-                answer_result.llm_output = {"answer": stream_resp}
+                answer_result.llm_output = {"answer": resp}
                 yield answer_result
+            self.checkPoint.clear_torch_cache()
         else:
-            response, _ = self.checkPoint.model.chat(
+            resp, _ = self.checkPoint.model.chat(
                 self.checkPoint.tokenizer,
                 prompt,
                 history=history[-self.history_len:] if self.history_len > 0 else [],
-                max_length=self.max_token,
-                temperature=self.temperature
             )
+            print(f"resp: {resp}")
             self.checkPoint.clear_torch_cache()
-            history += [[prompt, response]]
+            history += [[prompt, resp]]
             answer_result = AnswerResult()
             answer_result.history = history
-            answer_result.llm_output = {"answer": response}
+            answer_result.llm_output = {"answer": resp}
             yield answer_result
 
 

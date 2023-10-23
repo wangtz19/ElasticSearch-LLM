@@ -34,6 +34,7 @@ class ChatModel:
         self.vec_top_k = vec_top_k
         self.use_vec = use_vec
         self.history_len = histrory_len
+        self.es_lower_bound = 25 # for auxiliary history query retrieval score 
     
         shared.loaderCheckPoint = LoaderCheckPoint(params=llm_params)
         llm_model_ins = shared.loaderLLM()
@@ -50,18 +51,12 @@ class ChatModel:
     
     def get_answer(
             self, 
-            query, 
-            context, 
+            query,
+            prompt, 
             chat_history=[], 
             streaming: bool = False
         ):
-        query_history = [h[0] for h in chat_history if h[0] is not None]
-        if len(query_history) > 0:
-            prompt = PROMPT_TEMPLATE_WITH_HISTORY.format(question=query, context=context, history="\n".join([f"{i + 1}. {h[0]}" 
-                                                for i, h in enumerate(query_history[-self.history_len:])]))
-        else:
-            prompt = PROMPT_TEMPLATE.format(question=query, context=context)
-        print(prompt)
+        
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history, streaming=streaming):  
             resp = answer_result.llm_output["answer"]
             history = answer_result.history
@@ -76,7 +71,16 @@ class ChatModel:
         ):
         start = time.time()
         instructions = self.es.search(query, self.es_top_k)     #[(score, text, source)]
+        history_query = ""
+        chat_history_query = [h[0] for h in chat_history if h[0] is not None]
+        if instructions[0][0] < self.es_lower_bound:
+            for h in chat_history_query[::-1]: # in reverse order
+                new_instructions = self.es.search(h + " " + query, self.es_top_k)
+                history_query = h
+                if new_instructions[0][0] > self.es_lower_bound:
+                    break
         print(f"es search time: {time.time() - start} s")
+        
         all_texts = [ins[1] for ins in instructions]
         
         if self.use_vec:
@@ -99,8 +103,19 @@ class ChatModel:
                 "content": ins[2]["content"],
                 "score": ins[0]
             } for ins in instructions]
-        print(f"source_documents: {source_documents}")
-        for resp, history in self.get_answer(query=query, context=context, chat_history=chat_history, streaming=streaming):
+        if len(history_query) > 0:
+            prompt = PROMPT_TEMPLATE_WITH_HISTORY.format(
+                context=context,
+                history=history_query,
+                question=query
+            )
+        else:
+            prompt = PROMPT_TEMPLATE.format(
+                context=context,
+                question=query
+            )
+        print(f"prompt: {prompt}")
+        for resp, history in self.get_answer(query=query, prompt=prompt, chat_history=chat_history, streaming=streaming):
             yield resp, history, source_documents
 
     def stream_chat(
