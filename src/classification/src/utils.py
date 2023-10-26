@@ -7,6 +7,7 @@ LABEL2ID = {
         "knowledgeBase": 1,
         "chat": 2,
         "policyTag": 3,
+        "others": 4,
     },
     "second_level": {
         "policy": {
@@ -24,6 +25,7 @@ LABEL2ID = {
         "materials": 3,
         "condition": 4,
         "knowledgeBase": 5,
+        "others": 6,
     }
 }
 
