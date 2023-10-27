@@ -1,32 +1,38 @@
 from elasticsearch import Elasticsearch
+from langchain.schema.document import Document
+from typing import List
 
 class MyElasticsearch(Elasticsearch):
-    def __init__(self, url, index_name="linewell-policy", fields=None) -> None:
+    def __init__(self, url, index_name="linewell-policy") -> None:
         self.index_name = index_name
         self.client = Elasticsearch(url)
-        self.fields = ["标题", "子标题", "内容"] if fields is None else fields
-    def search(self, query, top_k=0) -> list:
+        self.fields = ["标题", "子标题", "内容"]
+
+    def search(self, query, top_k=0, index_name=None) -> List[Document]:
+        if index_name is None:
+            fields = self.fields
+        else:
+            # fields = ["title", index_name]
+            raise NotImplementedError("Not implemented for other index_name")
+        index_name = self.index_name if index_name is None else index_name
         query_body = {
             "query": {
                 "multi_match": {
                     "analyzer": "ik_smart",
                     "query": query,
-                    "fields": self.fields
+                    "fields": fields
                 }
             }    
         }
-        response = self.client.search(index=self.index_name, body=query_body)
-        res = []
-        for hit in response["hits"]["hits"]:
-            score = hit["_score"]
-            texts = "\n".join([hit["_source"][field] for field in self.fields])
-            sources = {
-                "title": hit['_source']['标题'],
-                "content": hit['_source']['子标题'] + hit['_source']['内容'],
-            }
-            res.append((score, texts, sources))
-        if top_k == 0:
-            return res
-        else:
-            top_k = min(top_k, len(res))
-            return res[:top_k]
+        response = self.client.search(index=index_name, body=query_body)
+        docs = [
+            Document(
+                page_content="\n".join([hit["_source"][field] for field in self.fields]),
+                metadata={
+                    "score": hit["_score"],
+                    "source": hit['_source']['标题'],
+                }
+            ) for hit in response["hits"]["hits"]
+        ]
+        top_k = len(docs) if top_k <= 0 else top_k
+        return docs[:top_k]
