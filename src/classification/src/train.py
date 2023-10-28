@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
-from utils import compute_metrics, LABEL2ID, ID2LABEL
+from utils import compute_metrics
+from constants import LABEL2ID, ID2LABEL
 import datetime
 from dataset import get_dataset, preprocess_dataset, split_dataset, get_collator
 from logger import get_logger
