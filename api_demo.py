@@ -11,6 +11,7 @@ from typing_extensions import Annotated
 from starlette.responses import RedirectResponse
 
 from src.chat.chat_model import ChatModel
+from src.chat.chat_model_clf import ChatModelClassifier
 
 
 class BaseResponse(BaseModel):
@@ -46,6 +47,15 @@ class ChatMessage(BaseModel):
     source_documents: List[str] = pydantic.Field(
         ..., description="List of source documents and their scores"
     )
+    first_intent: Optional[str] = pydantic.Field(
+        None, description="First intent label"
+    )
+    second_intent: Optional[str] = pydantic.Field(
+        None, description="Second intent label"
+    )
+    title: Optional[str] = pydantic.Field(None, description="Title of the document")
+    content: Optional[str] = pydantic.Field(None, description="Content of the document")
+    prompt: Optional[str] = pydantic.Field(None, description="Prompt text")
 
     class Config:
         schema_extra = {
@@ -85,7 +95,7 @@ async def local_doc_chat(
     ):
         pass
     source_documents = [
-        f"""出处 [{inum + 1}] {doc['title']}\n\t{doc['content']}\n"""
+        f"""出处 [{inum + 1}] {doc['source']}\n\t{doc['content']}\n"""
         f"""相关度：{doc['score']}\n\n"""
         for inum, doc in enumerate(sources)
     ]
@@ -95,6 +105,10 @@ async def local_doc_chat(
         response=resp,
         history=history,
         source_documents=source_documents,
+        title=sources[0]["source"],
+        content=sources[0]["content"],
+        prompt=sources[0]["prompt"],
+        second_intent=sources[0]["second_intent"],
     )
 
 
@@ -124,9 +138,16 @@ if __name__ == "__main__":
                         help="path to the local knowledge file")
     parser.add_argument("--model_name", "-m", type=str, default="chatglm2-6b",
                         help="model name, e.g. chatglm2-6b, baichuan2-13b-chat, qwen-14b-chat")
+    parser.add_argument("--es_top_k", "-ek", type=int, default=3,
+                        help="top k for es search")
+    parser.add_argument("--use_intent", "-ui", action="store_true",
+                        help="whether to use intent classifier")
+    parser.add_argument("--bert_path", "-bp", type=str, default="hfl/chinese-roberta-wwm-ext",
+                        help="bert model name or path, e.g. hfl/chinese-roberta-wwm-ext")
     args = parser.parse_args()
 
     args_dict = vars(args)
-    chat_model = ChatModel(llm_params=args_dict)
+    chat_model = ChatModel(llm_params=args_dict) if not args.use_intent else \
+                ChatModelClassifier(llm_params=args_dict, bert_path=args.bert_path)
     
     api_start(args)

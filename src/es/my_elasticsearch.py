@@ -12,8 +12,8 @@ class MyElasticsearch(Elasticsearch):
         if index_name is None:
             fields = self.fields
         else:
-            # fields = ["title", index_name]
-            raise NotImplementedError("Not implemented for other index_name")
+            # raise NotImplementedError("Not implemented for other index_name")
+            fields = ["title", "content"]
         index_name = self.index_name if index_name is None else index_name
         query_body = {
             "query": {
@@ -32,7 +32,15 @@ class MyElasticsearch(Elasticsearch):
                     "score": hit["_score"],
                     "source": hit['_source']['标题'],
                 }
-            ) for hit in response["hits"]["hits"]
+            ) if index_name is None else \
+            Document(
+                page_content=hit["_source"]["content"],
+                metadata={
+                    "score": hit["_score"],
+                    "source": hit['_source']['title'],
+                }
+            )
+            for hit in response["hits"]["hits"]
         ]
         top_k = len(docs) if top_k <= 0 else top_k
         return docs[:top_k]

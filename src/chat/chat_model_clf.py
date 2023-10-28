@@ -1,12 +1,13 @@
-from chat_model import ChatModel
+from src.chat.base_model import BaseModel
 from src.classification import BertClassifier
 from src.vs import get_existing_vs_path, EMBEDDING_DEVICE
 from langchain.vectorstores.faiss import FAISS
 from langchain.embeddings.huggingface import HuggingFaceBgeEmbeddings
-from template import PROMPT_TEMPLATE_TOP1, intent_map
+from src.chat.template import PROMPT_TEMPLATE_TOP1, intent_map
+from src.classification.src.constants import ID2LABEL
 import random
 
-class ChatModelClassifier(ChatModel):
+class ChatModelClassifier(BaseModel):
 
     def __init__(
             self,
@@ -24,7 +25,10 @@ class ChatModelClassifier(ChatModel):
             use_vs=False,
     ):
         if clf_type == "direct":
-            self.clf = BertClassifier(bert_path)
+            self.clf = BertClassifier(
+                id2label=ID2LABEL["second_level"]["policy"], # for fast deploy, change later
+                model_checkpoint=bert_path
+            )
         else:
             self.clf_first = BertClassifier(bert_path_fisrt)
             self.clf_second = BertClassifier(bert_path_second)
@@ -69,7 +73,7 @@ class ChatModelClassifier(ChatModel):
                 doc.metadata["score"] = score
                 docs.append(doc)
         else:
-            index_name = clf_result if clf_result != "knowledge_base" else \
+            index_name = clf_result if clf_result in intent_map.keys() else \
                         random.choice(intent_map.keys())
             docs = self.es.search(query, self.es_top_k, index_name=index_name)     #[(score, text, source)]
             # history_query = ""
@@ -86,6 +90,7 @@ class ChatModelClassifier(ChatModel):
                     title=docs[0].metadata["source"],
                     label=intent_map[index_name],
                     content=docs[0].page_content,
+                    question=query
                 )
             else:
                 # TODO
@@ -93,7 +98,9 @@ class ChatModelClassifier(ChatModel):
             source_documents = [{
                 "source": doc.metadata["source"],
                 "content": doc.page_content,
-                "score": doc.metadata["score"]
+                "score": doc.metadata["score"],
+                "second_intent": intent_map[index_name],
+                "prompt": prompt,
             } for doc in docs]
 
             for resp, history in self.get_answer(query=query, prompt=prompt, chat_history=chat_history, streaming=streaming):

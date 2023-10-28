@@ -1,4 +1,4 @@
-from base_model import BaseModel
+from src.chat.base_model import BaseModel
 from text2vec import SentenceModel, semantic_search
 import time
 
