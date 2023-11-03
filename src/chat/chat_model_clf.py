@@ -3,6 +3,9 @@ from src.classification import BertClassifier
 from src.vs import get_existing_vs_path, EMBEDDING_DEVICE
 from langchain.vectorstores.faiss import FAISS
 from langchain.embeddings.huggingface import HuggingFaceBgeEmbeddings
+from langchain.docstore.document import Document
+from typing import List
+from sentence_transformers.cross_encoder import CrossEncoder
 from src.chat.template import PROMPT_TEMPLATE_TOP1, intent_map
 from src.classification.src.constants import ID2LABEL
 import random
@@ -20,6 +23,7 @@ class ChatModelClassifier(BaseModel):
             bert_path=None,
             bert_path_fisrt=None,
             bert_path_second=None,
+            rerank_model_path="/root/share/cross-encoder-bert-base",
             vs_path=None,
             embed_model_name="/root/share/chinese-bert-wwm",
             use_vs=False,
@@ -41,6 +45,7 @@ class ChatModelClassifier(BaseModel):
             vs_path = get_existing_vs_path() if vs_path is None else vs_path
             assert vs_path is not None, "Error: no exsiting vector store found"
             self.vs = FAISS.load_local(vs_path, embedding)
+            self.rerank_model = CrossEncoder(rerank_model_path)
         self.use_vs = use_vs
         
         super().__init__(
@@ -86,6 +91,15 @@ class ChatModelClassifier(BaseModel):
             doc.metadata["score"] = score
             docs.append(doc)
         return docs
+    
+    def rerank_docs(self,
+                    query: str,
+                    docs: List[Document]):
+        scores = [float(self.rerank_model.predict([[query, doc.page_content]][0])) for doc in docs]
+        for idx in range(len(docs)):
+            docs[idx].metadata['score'] = scores[idx]
+        sorted_docs = [doc for _, doc in sorted(zip(scores, docs), key=lambda pair: pair[0], reverse=True)]
+        return sorted_docs
 
     def chat(
             self,
@@ -98,13 +112,12 @@ class ChatModelClassifier(BaseModel):
         docs = self.get_es_search_docs(query, index_name, chat_history_query)
         if self.use_vs:
             docs_vs = self.get_vs_search_docs(query, chat_history_query)
-            docs = docs_vs + docs
-            # TODO: add rerank
+            docs = self.rerank_docs(query, docs + docs_vs)
             
         if self.es_top_k == 1:
             prompt = PROMPT_TEMPLATE_TOP1.format(
                 title=docs[0].metadata["source"],
-                label=intent_map[index_name],
+                label=intent_map.get(index_name, "基本信息"),
                 content=docs[0].page_content,
                 question=query
             )
@@ -115,7 +128,7 @@ class ChatModelClassifier(BaseModel):
             "source": doc.metadata["source"],
             "content": doc.page_content,
             "score": doc.metadata["score"],
-            "second_intent": intent_map[index_name],
+            "second_intent": intent_map.get(index_name, "无"),
             "prompt": prompt,
         } for doc in docs]
 

@@ -146,10 +146,13 @@ if __name__ == "__main__":
                         help="bert model name or path, e.g. hfl/chinese-roberta-wwm-ext")
     parser.add_argument("--clf_type", "-ct", type=str, default="direct",
                         help="intent classifier type, e.g. direct, two_level, none")
+    parser.add_argument("--use_vs", "-uv", action="store_true",
+                        help="whether to use vector store")
     args = parser.parse_args()
 
     args_dict = vars(args)
     chat_model = ChatModel(llm_params=args_dict) if not args.use_intent else \
-                ChatModelClassifier(llm_params=args_dict, bert_path=args.bert_path)
+                ChatModelClassifier(llm_params=args_dict, bert_path=args.bert_path,
+                                    clf_type=args.clf_type, use_vs=args.use_vs)
     
     api_start(args)

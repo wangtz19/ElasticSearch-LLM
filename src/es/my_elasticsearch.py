@@ -9,18 +9,13 @@ class MyElasticsearch(Elasticsearch):
         self.fields = ["标题", "子标题", "内容"]
 
     def search(self, query, top_k=0, index_name=None) -> List[Document]:
-        if index_name is None:
-            fields = self.fields
-        else:
-            # raise NotImplementedError("Not implemented for other index_name")
-            fields = ["title", "content"]
         index_name = self.index_name if index_name is None else index_name
         query_body = {
             "query": {
                 "multi_match": {
                     "analyzer": "ik_smart",
                     "query": query,
-                    "fields": fields
+                    "fields": ["*"]
                 }
             }    
         }
@@ -33,6 +28,13 @@ class MyElasticsearch(Elasticsearch):
                     "source": hit['_source']['标题'],
                 }
             ) if index_name is None else \
+            Document(
+                page_content="\n".join([f"{k}: {v}" for k, v in hit["_source"].items()]),
+                metadata={
+                    "score": hit["_score"],
+                    "source": hit['_source']['项目名称'],
+                }
+            ) if index_name == "project" else \
             Document(
                 page_content=hit["_source"]["content"],
                 metadata={

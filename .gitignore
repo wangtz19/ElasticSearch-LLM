@@ -3,3 +3,4 @@ __pycache__/
 *.ipynb
 logs/
 checkpoints/
+knowledge_base/
