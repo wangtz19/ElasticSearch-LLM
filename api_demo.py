@@ -144,6 +144,8 @@ if __name__ == "__main__":
                         help="whether to use intent classifier")
     parser.add_argument("--bert_path", "-bp", type=str, default="hfl/chinese-roberta-wwm-ext",
                         help="bert model name or path, e.g. hfl/chinese-roberta-wwm-ext")
+    parser.add_argument("--clf_type", "-ct", type=str, default="direct",
+                        help="intent classifier type, e.g. direct, two_level, none")
     args = parser.parse_args()
 
     args_dict = vars(args)

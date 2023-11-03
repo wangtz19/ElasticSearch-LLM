@@ -62,12 +62,19 @@ if __name__ == "__main__":
         doc_list = load_data_from_dir("/root/es-llm/data/cleaned_data_all")
         for doc in tqdm(doc_list):
             es.index(index=index_name, document=doc)
-    else:
+        print(f"Index {index_name} inserted successfully.")
+    elif index_name == "intent":
         for intent in ["basic_info", "award", "process", "materials", "condition"]:
             check_and_create_index(intent, es)
             doc_list = json.load(open(f"/root/es-llm/data/intent/{intent}.json", "r"))
             for doc in tqdm(doc_list):
                 es.index(index=intent, document=doc)
             print(f"Index {intent} inserted successfully.")
+    elif index_name == "project": # policy project
+        check_and_create_index(index_name, es)
+        doc_list = json.load(open(f"/root/es-llm/data/intent/project_info.json", "r"))
+        for doc in tqdm(doc_list):
+            es.index(index=index_name, document=doc)
+        print(f"Index {index_name} inserted successfully.")
 
     print("Data inserted successfully.")

@@ -29,7 +29,7 @@ class ChatModelClassifier(BaseModel):
                 id2label=ID2LABEL["second_level"]["policy"], # for fast deploy, change later
                 model_checkpoint=bert_path
             )
-        else:
+        elif clf_type == "two_level":
             self.clf_first = BertClassifier(bert_path_fisrt)
             self.clf_second = BertClassifier(bert_path_second)
         self.clf_type = clf_type
@@ -50,6 +50,42 @@ class ChatModelClassifier(BaseModel):
             es_lower_bound=es_lower_bound,
             llm_params=llm_params
         )
+    
+    def get_index_name(self, query):
+        if self.clf_type == "direct":
+            index_name = self.clf.predict(query)["label"]
+        elif self.clf_type == "two_level":
+            clf_result_first = self.clf_first.predict(query)["label"]
+            if clf_result_first == "knowledge_base":
+                clf_result = "knowledge_base"
+            else: # only support `policy` for second classifier currently
+                clf_result = self.clf_second.predict(query)["label"]
+            index_name = clf_result if clf_result in intent_map.keys() else \
+                        random.choice(intent_map.keys())
+        else:
+            index_name = "project" # no intent classifier
+        return index_name
+    
+    def get_es_search_docs(self, query, index_name, chat_history_query=[]):
+        docs = self.es.search(query, self.es_top_k, index_name=index_name)
+        # TODO: add multi-turn search optimization
+        # if docs[0].metadata["score"] < self.es_lower_bound:
+        #     for h in chat_history_query[::-1]: # in reverse order
+        #         new_docs = self.es.search(h + " " + query, self.es_top_k, index_name=index_name)
+        #         # history_query = h
+        #         if new_docs[0].metadata["score"] > self.es_lower_bound:
+        #             docs = new_docs
+        #             break
+        return docs
+    
+    def get_vs_search_docs(self, query, chat_history_query=[]):
+        docs_with_score = self.vs.similarity_search_with_score(query, k=self.es_top_k)
+        # TODO: add multi-turn search optimization
+        docs = []
+        for doc, score in docs_with_score:
+            doc.metadata["score"] = score
+            docs.append(doc)
+        return docs
 
     def chat(
             self,
@@ -57,51 +93,31 @@ class ChatModelClassifier(BaseModel):
             streaming=False,
             chat_history=[]
     ):
-        if self.clf_type == "direct":
-            clf_result = self.clf.predict(query)["label"]
-        else:
-            clf_result_first = self.clf_first.predict(query)["label"]
-            if clf_result_first == "knowledge_base":
-                clf_result = "knowledge_base"
-            else: # only support `policy` for second classifier currently
-                clf_result = self.clf_second.predict(query)["label"]
-        
-        if clf_result == "knowledge_base" and self.use_vs:
-            docs_with_score = self.vs.similarity_search_with_score(query, k=self.es_top_k)
-            docs = []
-            for doc, score in docs_with_score:
-                doc.metadata["score"] = score
-                docs.append(doc)
-        else:
-            index_name = clf_result if clf_result in intent_map.keys() else \
-                        random.choice(intent_map.keys())
-            docs = self.es.search(query, self.es_top_k, index_name=index_name)     #[(score, text, source)]
-            # history_query = ""
-            chat_history_query = [h[0] for h in chat_history if h[0] is not None]
-            if docs[0].metadata["score"] < self.es_lower_bound:
-                for h in chat_history_query[::-1]: # in reverse order
-                    new_doc = self.es.search(h + " " + query, self.es_top_k, index_name=index_name)
-                    # history_query = h
-                    if new_doc[0].metadata["score"] > self.es_lower_bound:
-                        break
+        chat_history_query = [h[0] for h in chat_history if h[0] is not None]
+        index_name = self.get_index_name(query)
+        docs = self.get_es_search_docs(query, index_name, chat_history_query)
+        if self.use_vs:
+            docs_vs = self.get_vs_search_docs(query, chat_history_query)
+            docs = docs_vs + docs
+            # TODO: add rerank
             
-            if self.es_top_k == 1:
-                prompt = PROMPT_TEMPLATE_TOP1.format(
-                    title=docs[0].metadata["source"],
-                    label=intent_map[index_name],
-                    content=docs[0].page_content,
-                    question=query
-                )
-            else:
-                # TODO
-                pass
-            source_documents = [{
-                "source": doc.metadata["source"],
-                "content": doc.page_content,
-                "score": doc.metadata["score"],
-                "second_intent": intent_map[index_name],
-                "prompt": prompt,
-            } for doc in docs]
+        if self.es_top_k == 1:
+            prompt = PROMPT_TEMPLATE_TOP1.format(
+                title=docs[0].metadata["source"],
+                label=intent_map[index_name],
+                content=docs[0].page_content,
+                question=query
+            )
+        else:
+            # TODO
+            pass
+        source_documents = [{
+            "source": doc.metadata["source"],
+            "content": doc.page_content,
+            "score": doc.metadata["score"],
+            "second_intent": intent_map[index_name],
+            "prompt": prompt,
+        } for doc in docs]
 
-            for resp, history in self.get_answer(query=query, prompt=prompt, chat_history=chat_history, streaming=streaming):
-                yield resp, history, source_documents
+        for resp, history in self.get_answer(query=query, prompt=prompt, chat_history=chat_history, streaming=streaming):
+            yield resp, history, source_documents
