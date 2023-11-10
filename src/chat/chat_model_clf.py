@@ -72,7 +72,11 @@ class ChatModelClassifier(BaseModel):
         return index_name
     
     def get_es_search_docs(self, query, index_name, chat_history_query=[]):
-        docs = self.es.search(query, self.es_top_k, index_name=index_name)
+        if index_name in ["basic_info", "award", "process", "materials", "condition"]:
+            fields = ["title^2", "content"] # boost title field with 2x weight
+        else:
+            fields = ["*"]
+        docs = self.es.search(query, self.es_top_k, index_name=index_name, fields=fields)
         # TODO: add multi-turn search optimization
         # if docs[0].metadata["score"] < self.es_lower_bound:
         #     for h in chat_history_query[::-1]: # in reverse order

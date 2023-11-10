@@ -8,14 +8,15 @@ class MyElasticsearch(Elasticsearch):
         self.client = Elasticsearch(url)
         self.fields = ["标题", "子标题", "内容"]
 
-    def search(self, query, top_k=0, index_name=None) -> List[Document]:
+    def search(self, query, top_k=0, index_name=None, fields=["*"]) -> List[Document]:
         index_name = self.index_name if index_name is None else index_name
         query_body = {
             "query": {
                 "multi_match": {
                     "analyzer": "ik_smart",
                     "query": query,
-                    "fields": ["*"]
+                    "type": "cross_fields", # for structured data
+                    "fields": fields,
                 }
             }    
         }

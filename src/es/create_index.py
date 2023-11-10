@@ -19,17 +19,18 @@ def create_index(index_name, es):
             }
         }
     }
-    mappings = {
-        "properties": {
-            "vector": {
-                "type": "dense_vector",
-                "dims": 10,
-                "index": True,
-                "similarity": "l2_norm"
-            }
-        }
-    }
-    res = es.indices.create(index=index_name, settings=settings, mappings=mappings)
+    # mappings = {
+    #     "properties": {
+    #         "vector": {
+    #             "type": "dense_vector",
+    #             "dims": 10,
+    #             "index": True,
+    #             "similarity": "l2_norm"
+    #         }
+    #     }
+    # }
+    # res = es.indices.create(index=index_name, settings=settings, mappings=mappings)
+    res = es.indices.create(index=index_name, settings=settings)
     print(res)
 
 
