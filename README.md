@@ -1,3 +1,7 @@
+实现向量检索，knn召回
+实现多路召回
+
+
 # ElasticSearch LLM
 
 ## A QA Bot based on `elasticsearch`、`text2vec` and `LLM(ChatGLM2 etc)`

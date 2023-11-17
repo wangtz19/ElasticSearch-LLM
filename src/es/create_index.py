@@ -21,9 +21,10 @@ def create_index(index_name, es):
         "properties": {
             "vector": {
                 "type": "dense_vector",
-                "dims": 10,
+                "dims": 512,
                 "index": True,
                 "similarity": "l2_norm"
+                # "similarity": "cosine"
             }
         }
     }
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     create_index(index_name, es)
 
     # insert data
-    doc_list = load_data_from_dir("/root/es-llm/data/cleaned_data_all")
+    doc_list = load_data_from_dir("/root/es-llm/es-llm-v3/data/cleaned_data")
     for doc in tqdm(doc_list):
         es.index(index=index_name, document=doc)
     print("Data inserted successfully.")

@@ -20,7 +20,7 @@ PROMPT_TEMPLATE_WITH_HISTORY = """已知信息：
 class ChatModel:
     def __init__(
             self, 
-            es_top_k=3, 
+            es_top_k=6, 
             vec_top_k=2,
             use_vec=False,
             histrory_len=3,
@@ -81,7 +81,9 @@ class ChatModel:
                     break
         print(f"es search time: {time.time() - start} s")
         
+        
         all_texts = [ins[1] for ins in instructions]
+
         
         if self.use_vec:
             start = time.time()
@@ -103,6 +105,8 @@ class ChatModel:
                 "content": ins[2]["content"],
                 "score": ins[0]
             } for ins in instructions]
+
+
         if len(history_query) > 0:
             prompt = PROMPT_TEMPLATE_WITH_HISTORY.format(
                 context=context,
@@ -117,6 +121,8 @@ class ChatModel:
         print(f"prompt: {prompt}")
         for resp, history in self.get_answer(query=query, prompt=prompt, chat_history=chat_history, streaming=streaming):
             yield resp, history, source_documents
+
+
 
     def stream_chat(
             self,
@@ -137,3 +143,5 @@ class ChatModel:
                 enumerate(source_documents)])
             history[-1][-1] += source
             yield history, ""
+
+            
